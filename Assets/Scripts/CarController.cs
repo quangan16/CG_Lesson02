@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using TreeEditor;
 using UnityEngine;
 
 public class CarController : MonoBehaviour
@@ -9,12 +10,15 @@ public class CarController : MonoBehaviour
     [SerializeField] private float moveSpeed = 10.0f;
     [SerializeField] private int initTargetIndex = 0;
     [SerializeField] private GameObject carBody;
+    [SerializeField] private ControlMode controlMode;
+    [SerializeField] private float steerRate;
     float axisY = 0.0f;
     float tempAngle = 0.0f;
     
     // Start is called before the first frame update
     void Start()
     {
+        controlMode = ControlMode.Automatic;
         SetInitPos();
        
     }
@@ -33,9 +37,39 @@ public class CarController : MonoBehaviour
     }
     void Update()
     {
-        MoveForward();
-        CheckTarget();
+        
+        if (controlMode == ControlMode.Automatic)
+        {
+            MoveForward();
+            CheckTarget();
+        }else if (controlMode == ControlMode.Manual)
+        {
+            MoveWithInput();
+        }
+        
         Animate();
+    }
+
+    public Vector3 GetInput()
+    {
+        return new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));
+    }
+
+    [SerializeField] private  Vector3 desiredSteeing;
+    public void MoveWithInput()
+    {
+        transform.position += GetInput().z * transform.forward * Time.deltaTime * moveSpeed;
+        desiredSteeing += Vector3.up * GetInput().x * steerRate  * Time.deltaTime;
+        desiredSteeing = Vector3.ClampMagnitude(desiredSteeing, 100.0f);
+        if (GetInput().x == 0)
+        {
+            desiredSteeing.y = Mathf.MoveTowards(desiredSteeing.y, 0, Time.deltaTime * steerRate * 2);
+        }
+        if (Mathf.Abs(GetInput().z) > 0.05f)
+        {
+            transform.eulerAngles += desiredSteeing * Mathf.Sign(GetInput().z) * Time.deltaTime;
+        }
+       
     }
 
     public void CheckTarget()
@@ -86,4 +120,10 @@ public class CarController : MonoBehaviour
         axisY = Mathf.Sin(tempAngle * Mathf.Deg2Rad);
         carBody.transform.position = new Vector3(carBody.transform.position.x, carBody.transform.position.y + axisY * 0.02f, carBody.transform.position.z);
     }
+}
+
+public enum ControlMode
+{
+    Manual,
+    Automatic
 }
